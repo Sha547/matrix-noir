@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Cached dev tool versions for fastfetch. `devver node` -> v22.x
+# Cache refreshes in the background once it's older than a day; `devver --refresh` forces it.
+cache="${XDG_CACHE_HOME:-$HOME/.cache}/devver"
+
+refresh() {
+  local tmp="$cache.tmp.$$"
+  {
+    echo "node=$(node -v 2>/dev/null)"
+    echo "npm=$(npm -v 2>/dev/null)"
+    echo "python=$(python3 --version 2>/dev/null | cut -d' ' -f2)"
+    echo "git=$(git --version 2>/dev/null | cut -d' ' -f3)"
+    echo "rust=$(rustc --version 2>/dev/null | cut -d' ' -f2)"
+    echo "go=$(go version 2>/dev/null | cut -d' ' -f3 | sed 's/^go//')"
+    echo "docker=$(docker --version 2>/dev/null | cut -d' ' -f3 | tr -d ,)"
+  } > "$tmp" && mv "$tmp" "$cache"
+}
+
+mkdir -p "$(dirname "$cache")"
+if [ "$1" = "--refresh" ] || [ ! -s "$cache" ]; then
+  refresh
+elif [ -n "$(find "$cache" -mmin +1440 2>/dev/null)" ]; then
+  (refresh &) >/dev/null 2>&1
+fi
+
+if [ -n "$1" ] && [ "$1" != "--refresh" ]; then
+  v=$(sed -n "s/^$1=//p" "$cache")
+  echo "${v:-—}"
+fi

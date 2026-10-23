@@ -1,0 +1,21 @@
+# matrix-noir settings. The installer writes this to ~/.config/matrix-noir/config.
+# Plain KEY="value" lines (it's sourced by bash and parsed by devfetch). Edit anytime; no reinstall needed.
+
+# Letters drawn as the binary logo. A-Z, 0-9 and . - _ ! / are supported. Keep it short (2-4 chars).
+MN_LOGO="DEV"
+
+# Shown next to the logo
+MN_NAME="yourname"
+MN_TAGLINE="your studio or team"
+MN_ROLE="full-stack · ui/ux"
+
+# Space-separated project folders: used for "commits today", the `boot` repo list and the `matrix` screensaver
+MN_PROJECTS="$HOME/code/app $HOME/code/site"
+
+# Greetings, separated by |. {name} becomes MN_NAME.
+MN_GREETINGS="Welcome {name}, let's lock in.|{name}'s back. Ship something today.|Welcome {name}. No tabs, no excuses, lock in."
+
+# Set to 0 to turn pieces off
+# MN_STARTUP=0      # no startup screen
+# MN_REPOCARD=0     # no repo card when you cd into a repo
+# DEVFX=0           # startup screen without animation

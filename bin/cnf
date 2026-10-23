@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# command_not_found_handle helper: glitch-animated error + "did you mean" from your installed commands.
+#   cnf <typed-command> < list-of-known-commands
+cmd=$1
+red=$'\e[38;2;255;123;114m'; dim=$'\e[38;2;95;110;99m'; neon=$'\e[38;2;126;231;135m'; r=$'\e[0m'
+
+suggest=$(python3 -I -c '
+import sys, difflib
+cmd = sys.argv[1]
+known = {l.strip() for l in sys.stdin if l.strip()}
+alias = {"neofetch": "devfetch", "neoneofetch": "devfetch", "fastfecth": "fastfetch", "screenfetch": "devfetch"}
+swapped = next((k for k in sorted(known) if len(k) == len(cmd) and sorted(k) == sorted(cmd)), "")  # gti -> git
+m = alias.get(cmd) or swapped or next(iter(difflib.get_close_matches(cmd, known, n=1, cutoff=0.75)), "")
+print(m)' "$cmd")
+
+msg="✗ $cmd: command not found"
+colored="$red✗$r $cmd${dim}: command not found$r"
+if [ -n "$suggest" ]; then
+  msg+="  ·  did you mean $suggest?"
+  colored+="  ${dim}·  did you mean$r $neon$suggest$r${dim}?$r"
+fi
+glitch "$msg" "$colored" >&2

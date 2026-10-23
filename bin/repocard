@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# One-line animated summary when you cd into a git repo:  ▸ my-app · main · 3 changed · last: fix nav (2 hours ago)
+top=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+dim=$'\e[38;2;95;110;99m'; neon=$'\e[38;2;126;231;135m'; cyan=$'\e[38;2;86;212;221m'
+amber=$'\e[38;2;227;179;65m'; r=$'\e[0m'
+text=$'\e[38;2;200;211;202m'
+
+name=${top##*/}
+branch=$(git symbolic-ref --short -q HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)
+changed=$(git status --porcelain 2>/dev/null | wc -l)
+last=$(git log -1 --format='%s' 2>/dev/null | cut -c1-48)
+when=$(git log -1 --format='%cr' 2>/dev/null)
+
+plain="▸ $name · $branch"
+colored="$neon▸$r $cyan$name$r $dim·$r $neon $branch$r"
+if [ "$changed" -gt 0 ]; then
+  plain+=" · $changed changed"; colored+=" $dim·$r $amber$changed changed$r"
+fi
+if [ -n "$last" ]; then
+  plain+=" · last: $last ($when)"; colored+=" $dim· last:$r $text$last$r $dim($when)$r"
+fi
+glitch --type "$plain" "$colored"

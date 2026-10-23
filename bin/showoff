@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# The full cinematic: boot sequence -> M.S screen decrypts in -> code rain screensaver. Ctrl+C to stop.
+trap 'tput cnorm; clear; exit 0' INT TERM
+cinematic=(decrypt beams laseretch synthgrid errorcorrect vhstape)
+boot
+sleep 1.2
+clear
+devfetch --fx "${1:-${cinematic[RANDOM % ${#cinematic[@]}]}}"
+sleep 3
+exec matrix

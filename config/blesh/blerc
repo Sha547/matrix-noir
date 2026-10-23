@@ -1,0 +1,33 @@
+# matrix-noir ble.sh config (Noir palette)
+
+# Transient prompt: once you hit enter, the old two-line prompt collapses to a single green ❯
+bleopt prompt_ps1_final='\[\e[38;2;63;185;80m\]❯\[\e[0m\] '
+bleopt prompt_ps1_transient=always
+
+# Exit / slow-command markers in the same style as the prompt
+bleopt exec_errexit_mark=$'\e[38;2;255;123;114m✗ exit %d\e[m'
+bleopt exec_elapsed_mark=$'\e[38;2;95;110;99m⏱ %s (cpu %s%%)\e[m'
+bleopt exec_elapsed_enabled='usr+sys>=10000'
+
+# Suggestions show up fast, in dim grey italics
+bleopt complete_auto_delay=50
+ble-face -s auto_complete             fg=#3a463d,italic
+
+# Syntax highlighting while you type
+ble-face -s command_file              fg=#7ee787
+ble-face -s command_alias             fg=#56d4dd
+ble-face -s command_function          fg=#56d4dd
+ble-face -s command_builtin           fg=#3fb950
+ble-face -s command_builtin_dot       fg=#3fb950,bold
+ble-face -s command_keyword           fg=#56d4dd,bold
+ble-face -s command_directory         fg=#79c0ff,underline
+ble-face -s argument_option           fg=#e3b341
+ble-face -s syntax_quoted             fg=#a5d6ff
+ble-face -s syntax_quotation          fg=#a5d6ff,bold
+ble-face -s syntax_varname            fg=#e3b341
+ble-face -s syntax_param_expansion    fg=#87e5ec
+ble-face -s syntax_comment            fg=#5f6e63,italic
+ble-face -s syntax_error              fg=#050806,bg=#ff7b72
+ble-face -s filename_directory        fg=#79c0ff,underline
+ble-face -s filename_executable       fg=#7ee787,underline
+ble-face -s region                    fg=#050806,bg=#3fb950

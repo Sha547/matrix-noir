@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Animated git history of the current repo.  gitfx [effect]
+git rev-parse --git-dir >/dev/null 2>&1 || { echo "not a git repo"; exit 1; }
+git log --graph --date=relative --pretty=format:'%h  %s  (%ad, %an)%d' -n 40 | fx "${1:-sweep}"

@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Fake boot sequence for your dev environment, with real versions and repo state.
+cfg="${XDG_CONFIG_HOME:-$HOME/.config}/matrix-noir/config"
+MN_NAME=${USER:-dev}; MN_TAGLINE=""; MN_PROJECTS=""
+[ -f "$cfg" ] && . "$cfg"
+
+ok=$'\e[38;2;126;231;135m  OK  \e[0m'
+dim=$'\e[38;2;95;110;99m'; r=$'\e[0m'; accent=$'\e[38;2;63;185;80m'; neon=$'\e[38;2;126;231;135m'
+
+step() { printf '%s[%s]%s %s%s%s\n' "$dim" "$ok$dim" "$r" "$1" "$dim" "${2:+  $2}$r"; sleep 0.09; }
+
+title="${MN_NAME^^}://dev${MN_TAGLINE:+  ·  $MN_TAGLINE}"
+devver >/dev/null 2>&1
+clear
+printf '%s' "$accent"
+printf '%s\n' "$title" | tte --frame-rate 120 decrypt --final-gradient-stops 3fb950 7ee787 2>/dev/null || echo "$title"
+printf '%s\n' "$r"
+
+step "Mounting workspace" "$HOME"
+step "Loading kernel" "$(uname -r)"
+command -v node >/dev/null && step "Starting node runtime" "$(devver node)"
+command -v npm >/dev/null && step "Linking npm registry" "v$(devver npm)"
+command -v python3 >/dev/null && step "Warming python" "$(devver python)"
+command -v rustc >/dev/null && step "Igniting rust toolchain" "$(devver rust)"
+command -v go >/dev/null && step "Compiling go" "$(devver go)"
+command -v docker >/dev/null && step "Spinning up docker" "$(devver docker)"
+step "Syncing git" "$(devver git)"
+for d in $MN_PROJECTS; do
+  [ -d "$d/.git" ] || continue
+  b=$(git -C "$d" symbolic-ref --short -q HEAD 2>/dev/null)
+  n=$(git -C "$d" status --porcelain 2>/dev/null | wc -l)
+  [ "$n" -gt 0 ] && b="${b:-detached} · $n changed"
+  step "Indexing ${d##*/}" "${b:-detached}"
+done
+step "Loading taste" "100%"
+printf '\n%s▸ all systems go. lock in.%s\n\n' "$neon" "$r"

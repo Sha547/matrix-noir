@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Animate anything with terminaltexteffects, in Catppuccin colors.
+#   ls -la | fx            random effect
+#   fx burn < file.tsx     specific effect
+#   fx --list              list effects
+effects=(beams binarypath blackhole bouncyballs bubbles burn colorshift crumble decrypt errorcorrect
+  expand fireworks highlight laseretch matrix middleout orbittingvolley overflow pour print rain
+  randomsequence rings scattered slice slide smoke spotlights spray swarm sweep synthgrid thunderstorm
+  unstable vhstape waves wipe)
+
+if [ "$1" = "--list" ]; then printf '%s\n' "${effects[@]}"; exit 0; fi
+fx=${1:-${effects[RANDOM % ${#effects[@]}]}}
+
+rows=$(( $(tput lines 2>/dev/null || echo 40) - 3 ))
+cols=$(tput cols 2>/dev/null || echo 120)
+
+# Keep input inside the screen, tabs expanded, so effects don't scroll
+expand -t 2 | head -n "$rows" | cut -c1-"$cols" \
+  | tte --frame-rate 120 --existing-color-handling ignore "$fx" \
+      --final-gradient-stops 3fb950 7ee787 56d4dd --final-gradient-direction diagonal

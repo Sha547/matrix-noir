@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Greeting box with a random tte effect. Lines come from MN_GREETINGS in ~/.config/matrix-noir/config.
+cfg="${XDG_CONFIG_HOME:-$HOME/.config}/matrix-noir/config"
+MN_NAME=${USER:-dev}
+MN_GREETINGS="Welcome back, {name}. Lock in."
+[ -f "$cfg" ] && . "$cfg"
+
+IFS='|' read -ra lines <<<"$MN_GREETINGS"
+msg=${lines[RANDOM % ${#lines[@]}]}
+msg=${msg//\{name\}/$MN_NAME}
+date_line="$(date +'%a %d %b · %H:%M')"
+
+w=$(( ${#msg} + 6 ))
+bar=$(printf '─%.0s' $(seq 1 "$w"))
+pad=$(printf '%*s' $(( ${#msg} - ${#date_line} > 0 ? ${#msg} - ${#date_line} : 0 )) '')  # char-aware; printf %-*s pads by bytes
+banner=$(printf '╭%s╮\n│   %s   │\n│   %s%s   │\n╰%s╯\n' "$bar" "$msg" "$date_line" "$pad" "$bar")
+
+if command -v tte >/dev/null; then
+  effects=(decrypt slide beams middleout expand print)
+  fx=${effects[RANDOM % ${#effects[@]}]}
+  printf '%s\n' "$banner" | tte --frame-rate 120 "$fx" --final-gradient-stops 3fb950 7ee787 56d4dd 2>/dev/null \
+    || printf '%s\n' "$banner"
+else
+  printf '\e[38;2;126;231;135m%s\e[0m\n' "$banner"
+fi

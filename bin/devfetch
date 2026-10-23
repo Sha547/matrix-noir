@@ -1,0 +1,325 @@
+#!/usr/bin/env python3
+"""matrix-noir startup screen: a binary-coded logo + greeting, then system | stack info.
+
+  devfetch                          print it
+  devfetch --fx                     animate (~1s): built-in matrix rain or decode, info cascades in
+  devfetch --fx rain|decode         force a built-in effect
+  devfetch --fx matrix|decrypt|...  use a slower terminaltexteffects (tte) effect instead
+  DEVFX=0                           never animate
+
+Settings come from ~/.config/matrix-noir/config (MN_LOGO, MN_NAME, MN_TAGLINE, MN_ROLE,
+MN_PROJECTS, MN_GREETINGS); see config.example in the repo.
+"""
+import os, random, re, shutil, subprocess, sys, time
+from datetime import datetime
+from pathlib import Path
+
+CONFIG = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "matrix-noir" / "config"
+
+# 5x7 pixel font. Each pixel renders as random binary digits; scale 2 = 4 chars x 2 rows per pixel.
+FONT = {
+    "A": [".###.", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"],
+    "B": ["####.", "#...#", "#...#", "####.", "#...#", "#...#", "####."],
+    "C": [".###.", "#...#", "#....", "#....", "#....", "#...#", ".###."],
+    "D": ["####.", "#...#", "#...#", "#...#", "#...#", "#...#", "####."],
+    "E": ["#####", "#....", "#....", "####.", "#....", "#....", "#####"],
+    "F": ["#####", "#....", "#....", "####.", "#....", "#....", "#...."],
+    "G": [".###.", "#...#", "#....", "#.###", "#...#", "#...#", ".####"],
+    "H": ["#...#", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"],
+    "I": ["###", ".#.", ".#.", ".#.", ".#.", ".#.", "###"],
+    "J": ["..###", "...#.", "...#.", "...#.", "#..#.", "#..#.", ".##.."],
+    "K": ["#...#", "#..#.", "#.#..", "##...", "#.#..", "#..#.", "#...#"],
+    "L": ["#....", "#....", "#....", "#....", "#....", "#....", "#####"],
+    "M": ["#...#", "##.##", "#.#.#", "#.#.#", "#...#", "#...#", "#...#"],
+    "N": ["#...#", "##..#", "#.#.#", "#..##", "#...#", "#...#", "#...#"],
+    "O": [".###.", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."],
+    "P": ["####.", "#...#", "#...#", "####.", "#....", "#....", "#...."],
+    "Q": [".###.", "#...#", "#...#", "#...#", "#.#.#", "#..#.", ".##.#"],
+    "R": ["####.", "#...#", "#...#", "####.", "#.#..", "#..#.", "#...#"],
+    "S": [".####", "#....", "#....", ".###.", "....#", "....#", "####."],
+    "T": ["#####", "..#..", "..#..", "..#..", "..#..", "..#..", "..#.."],
+    "U": ["#...#", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."],
+    "V": ["#...#", "#...#", "#...#", "#...#", "#...#", ".#.#.", "..#.."],
+    "W": ["#...#", "#...#", "#...#", "#.#.#", "#.#.#", "#.#.#", ".#.#."],
+    "X": ["#...#", "#...#", ".#.#.", "..#..", ".#.#.", "#...#", "#...#"],
+    "Y": ["#...#", "#...#", ".#.#.", "..#..", "..#..", "..#..", "..#.."],
+    "Z": ["#####", "....#", "...#.", "..#..", ".#...", "#....", "#####"],
+    "0": [".###.", "#...#", "#..##", "#.#.#", "##..#", "#...#", ".###."],
+    "1": ["..#..", ".##..", "..#..", "..#..", "..#..", "..#..", ".###."],
+    "2": [".###.", "#...#", "....#", "...#.", "..#..", ".#...", "#####"],
+    "3": ["####.", "....#", "....#", ".###.", "....#", "....#", "####."],
+    "4": ["...#.", "..##.", ".#.#.", "#..#.", "#####", "...#.", "...#."],
+    "5": ["#####", "#....", "####.", "....#", "....#", "#...#", ".###."],
+    "6": [".###.", "#....", "#....", "####.", "#...#", "#...#", ".###."],
+    "7": ["#####", "....#", "...#.", "..#..", ".#...", ".#...", ".#..."],
+    "8": [".###.", "#...#", "#...#", ".###.", "#...#", "#...#", ".###."],
+    "9": [".###.", "#...#", "#...#", ".####", "....#", "....#", ".###."],
+    ".": ["..", "..", "..", "..", "..", "##", "##"],
+    "-": ["....", "....", "....", "####", "....", "....", "...."],
+    "_": [".....", ".....", ".....", ".....", ".....", ".....", "#####"],
+    "!": ["##", "##", "##", "##", "##", "..", "##"],
+    "/": ["....#", "....#", "...#.", "..#..", ".#...", "#....", "#...."],
+    " ": ["..."] * 7,
+}
+
+ESC = "\x1b["
+RESET = ESC + "0m"
+ANSI = re.compile(r"\x1b\[[0-9;]*m")
+SGR = re.compile(r"(\x1b\[[0-9;]*m)")
+
+
+def load_config():
+    cfg = {
+        "MN_LOGO": "DEV",
+        "MN_NAME": os.environ.get("USER", "dev"),
+        "MN_TAGLINE": "",
+        "MN_ROLE": "",
+        "MN_PROJECTS": "",
+        "MN_GREETINGS": "Welcome back, {name}. Lock in.|{name} is online. Ship something today.",
+    }
+    if CONFIG.exists():
+        for line in CONFIG.read_text().splitlines():
+            m = re.match(r'\s*(MN_[A-Z_]+)=(.*)$', line)
+            if m:
+                val = m.group(2).strip()
+                if len(val) >= 2 and val[0] == val[-1] and val[0] in "\"'":
+                    val = val[1:-1]
+                cfg[m.group(1)] = os.path.expandvars(val.replace("~", str(Path.home())))
+    return cfg
+
+
+def rgb(r, g, b):
+    return f"{ESC}38;2;{r};{g};{b}m"
+
+
+def lerp(a, b, t):
+    return tuple(round(a[i] + (b[i] - a[i]) * t) for i in range(3))
+
+
+def vis_len(s):
+    return len(ANSI.sub("", s))
+
+
+def pad(s, width):
+    return s + " " * max(0, width - vis_len(s))
+
+
+def bitmap(text):
+    """Join glyphs for `text` into rows of '#'/'.' with one empty column between letters."""
+    glyphs = [FONT.get(ch, FONT[" "]) for ch in text.upper()]
+    return ["." .join(g[y] for g in glyphs) for y in range(7)]
+
+
+def logo(text, scale):
+    rows = [row for row in bitmap(text) for _ in range(scale)]
+    h = len(rows)
+    top, mid, bot = (230, 255, 230), (126, 231, 135), (40, 140, 60)  # matrix greens, light to dark
+    out = []
+    for y, row in enumerate(rows):
+        t = y / max(1, h - 1)
+        base = lerp(top, mid, t * 2) if t < 0.5 else lerp(mid, bot, (t - 0.5) * 2)
+        line = ""
+        for px in row:
+            for _ in range(2 * scale):
+                bit = random.choice("01")
+                if px == "#":
+                    c = (240, 255, 240) if random.random() < 0.06 else base  # occasional bright "head"
+                    line += rgb(*c) + bit
+                elif random.random() < 0.05:
+                    line += rgb(30, 60, 40) + bit  # faint background noise
+                else:
+                    line += " "
+        out.append(line + RESET)
+    return out
+
+
+def commits_today(projects):
+    n = 0
+    for d in projects.split():
+        if (Path(d) / ".git").exists():
+            r = subprocess.run(["git", "-C", d, "log", "--since=midnight", "--oneline"],
+                               capture_output=True, text=True)
+            n += len(r.stdout.splitlines())
+    return n
+
+
+def tagline(cfg):
+    dim, text, accent = rgb(95, 110, 99), rgb(200, 211, 202), rgb(63, 185, 80)
+    neon, amber = rgb(126, 231, 135), rgb(227, 179, 65)
+    name = cfg["MN_NAME"]
+    greetings = [g.strip().replace("{name}", name) for g in cfg["MN_GREETINGS"].split("|") if g.strip()]
+    now = datetime.now()
+    who = f"{accent}{name}{RESET}"
+    if cfg["MN_TAGLINE"]:
+        who += f" {dim}·{RESET} {text}{cfg['MN_TAGLINE']}{RESET}"
+    lines = [f"{neon}{random.choice(greetings)}{RESET}", "", who]
+    if cfg["MN_ROLE"]:
+        lines.append(f"{dim}{cfg['MN_ROLE']}{RESET}")
+    lines.append("")
+    if cfg["MN_PROJECTS"].strip():
+        lines.append(f"{dim}commits today{RESET}  {neon}{commits_today(cfg['MN_PROJECTS'])}{RESET}")
+    lines.append(f"{dim}{now:%a %d %b}{RESET}  {amber}{now:%H:%M}{RESET}")
+    return lines
+
+
+def info_columns():
+    cmd = ["fastfetch", "--logo", "none", "--pipe", "false"]
+    ff_conf = CONFIG.parent.parent / "fastfetch" / "config.jsonc"   # fastfetch looks up the passwd home, not $HOME
+    if ff_conf.exists():
+        cmd += ["-c", str(ff_conf)]
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True)
+    except OSError:
+        return [], []
+    lines = r.stdout.splitlines()
+    split = next((i for i, l in enumerate(lines) if "stack" in ANSI.sub("", l)), len(lines))
+    return lines[:split], [l for l in lines[split:] if ANSI.sub("", l).strip()]
+
+
+def side_by_side(left, right, gap):
+    lw = max((vis_len(l) for l in left), default=0) + gap
+    n = max(len(left), len(right))
+    left = left + [""] * (n - len(left))
+    right = right + [""] * (n - len(right))
+    return [pad(l, lw) + r for l, r in zip(left, right)]
+
+
+def build(cols, cfg):
+    tl = tagline(cfg)
+    tl_w = max(vis_len(t) for t in tl)
+    # Biggest logo that still fits beside (or above) the greeting
+    for scale in (2, 1):
+        lg = logo(cfg["MN_LOGO"], scale)
+        if vis_len(lg[0]) + 8 <= cols:
+            break
+    if cols >= vis_len(lg[0]) + 8 + tl_w:
+        top_pad = max(0, (len(lg) - len(tl)) // 2)
+        block1 = side_by_side(lg, [""] * top_pad + tl, 6)
+    else:
+        block1 = lg + [""] + tl
+    system, stack = info_columns()
+    if system and cols >= max(map(vis_len, system)) + 4 + max(map(vis_len, stack), default=0):
+        block2 = side_by_side(system, stack, 4)
+    else:
+        block2 = system + stack
+    indent = "  "
+    return [indent + l for l in block1], [indent + l for l in block2]
+
+
+def tte(lines, effect, extra=()):
+    cmd = ["tte", "--frame-rate", "200", "--existing-color-handling", "dynamic", effect, *extra]
+    try:
+        subprocess.run(cmd, input="\n".join(lines) + "\n", text=True, check=True)
+    except (OSError, subprocess.CalledProcessError):
+        print("\n".join(lines))
+
+
+def cells(line):
+    """Split an ANSI-colored line into [(char, sgr)] so frames can recolor single cells."""
+    out, cur = [], ""
+    for part in SGR.split(line):
+        if SGR.fullmatch(part):
+            cur = "" if part in (ESC + "0m", ESC + "m") else part
+        else:
+            out.extend((ch, cur) for ch in part)
+    return out
+
+
+def play(lines, effect, duration=0.95, fps=45):
+    """Built-in matrix animations: pure Python, no tte startup cost.
+
+    rain:   every column gets a falling bright head with a green trail; cells resolve above it.
+    decode: every cell flickers random bits, then locks in left to right with jitter.
+    """
+    grid = [cells(l) for l in lines]
+    h, w = len(grid), max(len(r) for r in grid)
+    for r in grid:
+        r.extend([(" ", "")] * (w - len(r)))
+    head, trail, faint = rgb(232, 255, 232), [rgb(126, 231, 135), rgb(63, 185, 80), rgb(35, 110, 50)], rgb(30, 52, 36)
+    delay = [random.uniform(0, 0.45) for _ in range(w)]               # rain: column start (fraction of duration)
+    lock = [[x / w * 0.75 + random.uniform(0, 0.25) for x in range(w)] for _ in range(h)]  # decode: lock time
+    out = sys.stdout
+    out.write(ESC + "?25l" + "\n" * h)
+    try:
+        frames = max(1, int(duration * fps))
+        for f in range(frames + 1):
+            t = f / frames
+            rows = []
+            for y, row in enumerate(grid):
+                line = []
+                for x, (ch, sgr) in enumerate(row):
+                    bit = "01"[random.getrandbits(1)]
+                    if effect == "decode":
+                        if t >= lock[y][x]:
+                            line.append(sgr + ch)
+                        elif ch != " ":
+                            line.append(trail[2 if t < lock[y][x] - 0.2 else 0] + bit)
+                        else:
+                            line.append(faint + bit if random.random() < 0.04 else " ")
+                        continue
+                    progress = (t - delay[x]) / 0.55                     # 0..1 while this column falls
+                    hy = progress * (h + 3) - 1
+                    if y < hy - 3:
+                        line.append(sgr + ch)
+                    elif y < hy - 0.5:
+                        line.append(trail[min(2, int(hy - y))] + bit)
+                    elif y < hy + 0.5:
+                        line.append(head + bit)
+                    else:
+                        line.append(faint + bit if random.random() < 0.025 else " ")
+                rows.append("".join(line) + RESET)
+            out.write(f"{ESC}{h}F" + "\n".join(rows) + "\n")
+            out.flush()
+            time.sleep(1 / fps)
+        out.write(f"{ESC}{h}F" + "\n".join(lines) + "\n")       # exact final frame
+    finally:
+        out.write(ESC + "?25h")
+        out.flush()
+
+
+def cascade(lines, step=0.012):
+    """Info block drops in line by line with a one-frame dim flash."""
+    dim = rgb(58, 70, 61)
+    for l in lines:
+        sys.stdout.write(dim + ANSI.sub("", l) + RESET + "\r")
+        sys.stdout.flush()
+        time.sleep(step)
+        sys.stdout.write(ESC + "2K" + l + "\n")
+        sys.stdout.flush()
+
+
+def main():
+    cfg = load_config()
+    size = shutil.get_terminal_size((120, 40))
+    block1, block2 = build(size.columns, cfg)
+    width_ok = max(map(vis_len, block1 + block2)) < size.columns
+    animate = (len(sys.argv) > 1 and sys.argv[1] == "--fx" and os.environ.get("DEVFX", "1") != "0"
+               and sys.stdout.isatty() and width_ok and size.lines >= len(block1) + len(block2) + 4)
+    print()
+    if not animate:
+        print("\n".join(block1 + ([""] + block2 if block2 else [])))
+        return
+    name = sys.argv[2] if len(sys.argv) > 2 else random.choice(["rain", "decode"])
+    if name in ("rain", "decode") or not shutil.which("tte"):
+        play(block1, name if name in ("rain", "decode") else "rain")
+        if block2:
+            print()
+            cascade(block2)
+        return
+    # Slow cinematic tte effects (showoff): matrix ~3s, binarypath ~4.5s, decrypt ~5s+
+    logo_fx = {
+        "matrix": ["--rain-time", "1", "--rain-fall-delay-range", "1-3", "--rain-column-delay-range", "1-3",
+                   "--resolve-delay", "1", "--rain-symbols", "0", "1",
+                   "--rain-color-gradient", "2b8a3e", "40c057", "a6e3a1", "--highlight-color", "e8ffe8"],
+        "binarypath": ["--movement-speed", "4", "--active-binary-groups", "0.6",
+                       "--binary-colors", "40c057", "a6e3a1", "2b8a3e"],
+        "decrypt": ["--typing-speed", "8", "--ciphertext-colors", "2b8a3e", "40c057", "a6e3a1"],
+    }
+    tte(block1, name, logo_fx.get(name, []))
+    if block2:
+        print()
+        tte(block2, random.choice(["wipe", "middleout", "slide"]))
+
+
+if __name__ == "__main__":
+    main()

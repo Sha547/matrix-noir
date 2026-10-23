@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Code screensaver: real source files from your projects, animated with random effects. Ctrl+C to exit.
+#   matrix          files from the current git repo (or your MN_PROJECTS)
+#   matrix ~/code   files from a given folder
+cfg="${XDG_CONFIG_HOME:-$HOME/.config}/matrix-noir/config"
+MN_PROJECTS=""
+[ -f "$cfg" ] && . "$cfg"
+effects=(matrix rain decrypt binarypath synthgrid laseretch errorcorrect vhstape burn thunderstorm smoke waves)
+
+root=${1:-}
+if [ -z "$root" ]; then
+  root=$(git rev-parse --show-toplevel 2>/dev/null)
+  [ -z "$root" ] && for d in $MN_PROJECTS; do [ -d "$d" ] && root=$d && break; done
+fi
+[ -z "$root" ] && { echo "matrix: run it inside a git repo, pass a folder, or set MN_PROJECTS"; exit 1; }
+
+mapfile -t files < <(
+  if git -C "$root" rev-parse >/dev/null 2>&1; then git -C "$root" ls-files; else (cd "$root" && find . -type f); fi \
+    | grep -E '\.(tsx?|jsx?|astro|vue|svelte|py|rs|go|css|kt|java|rb|php|c|cpp|h|sh)$' | grep -vE 'node_modules|\.min\.|dist/|build/' \
+    | sed "s|^\./||; s|^|$root/|"
+)
+[ ${#files[@]} -eq 0 ] && { echo "no source files found in $root"; exit 1; }
+
+trap 'tput cnorm; clear; exit 0' INT TERM
+tput civis
+while :; do
+  f=${files[RANDOM % ${#files[@]}]}
+  fxname=${effects[RANDOM % ${#effects[@]}]}
+  clear
+  rows=$(( $(tput lines) - 4 ))
+  lines=$(wc -l < "$f"); start=$(( lines > rows ? RANDOM % (lines - rows) + 1 : 1 ))
+  { printf '\e[38;2;95;110;99m// %s  ·  %s\e[0m\n' "${f#"$root"/}" "$fxname"; tail -n +"$start" "$f" | head -n "$rows"; } \
+    | fx "$fxname"
+  sleep 1.5
+done

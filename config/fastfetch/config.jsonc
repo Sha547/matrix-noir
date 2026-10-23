@@ -1,0 +1,32 @@
+// matrix-noir fastfetch layout. Tool versions come from `devver` (cached daily).
+{
+  "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
+  "logo": { "type": "none" },
+  "display": {
+    "separator": "  ",
+    "color": { "keys": "#3fb950", "title": "#7ee787" }
+  },
+  "modules": [
+    { "type": "title", "format": "{user-name-colored}@{host-name-colored}" },
+    { "type": "custom", "format": "\u001b[38;2;58;70;61m─── system ─────────────────────\u001b[0m" },
+    { "type": "os", "key": "󰣇 os     ", "format": "{pretty-name}" },
+    { "type": "kernel", "key": " kernel " },
+    { "type": "uptime", "key": "󰅐 uptime " },
+    { "type": "command", "key": " shell  ", "keyColor": "#56d4dd", "text": "echo bash $(bash -c 'echo ${BASH_VERSION%%(*}')" },
+    { "type": "command", "key": " term   ", "keyColor": "#56d4dd", "text": "if [ -n \"$KITTY_WINDOW_ID\" ]; then echo kitty; elif [ -n \"$KONSOLE_VERSION\" ]; then echo konsole; else echo ${TERM_PROGRAM:-$TERM}; fi" },
+    { "type": "cpu", "key": " cpu    ", "format": "{name} ({cores-logical})" },
+    { "type": "gpu", "key": "󰢮 gpu    ", "format": "{name}" },
+    { "type": "memory", "key": "󰍛 mem    ", "percent": { "type": 3, "green": 50, "yellow": 80 } },
+    { "type": "disk", "key": "󰋊 disk   ", "folders": "/", "percent": { "type": 3, "green": 60, "yellow": 85 } },
+    { "type": "custom", "format": "\u001b[38;2;58;70;61m─── stack ──────────────────────\u001b[0m" },
+    { "type": "command", "key": " node   ", "keyColor": "#56d4dd", "text": "devver node" },
+    { "type": "command", "key": " npm    ", "keyColor": "#56d4dd", "text": "devver npm" },
+    { "type": "command", "key": " python ", "keyColor": "#56d4dd", "text": "devver python" },
+    { "type": "command", "key": " rust   ", "keyColor": "#56d4dd", "text": "devver rust" },
+    { "type": "command", "key": " go     ", "keyColor": "#56d4dd", "text": "devver go" },
+    { "type": "command", "key": " docker ", "keyColor": "#56d4dd", "text": "devver docker" },
+    { "type": "command", "key": " git    ", "keyColor": "#56d4dd", "text": "devver git" },
+    "break",
+    { "type": "colors", "symbol": "circle", "paddingLeft": 2 }
+  ]
+}

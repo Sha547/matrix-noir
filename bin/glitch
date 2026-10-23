@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Fast pure-bash text animations (~0.2s, no python startup), for small moments like errors and repo cards.
+#   glitch "plain text" ["final text with ANSI colors"]     scrambled chars that lock into place
+#   glitch --type "plain text" ["final colored text"]       typewriter
+[ -t 1 ] || { printf '%s\n' "${3:-${2:-$1}}"; exit 0; }
+
+mode=glitch
+[ "$1" = "--type" ] && { mode=type; shift; }
+plain=$1
+final=${2:-$1}
+n=${#plain}
+r=$'\e[0m'; dim=$'\e[38;2;58;70;61m'; green=$'\e[38;2;63;185;80m'; neon=$'\e[38;2;126;231;135m'
+noise='01#%&@$!<>/\|=+*~^:;01010101'
+
+printf '\e[?25l'
+if [ "$mode" = type ]; then
+  step=$(( n / 24 + 1 ))
+  for ((i = step; i < n + step; i += step)); do
+    printf '\r%s%s%s▌%s' "$green" "${plain:0:i}" "$neon" "$r"
+    sleep 0.008
+  done
+else
+  frames=9
+  for ((f = 0; f < frames; f++)); do
+    line=""
+    locked=$(( n * f / frames ))   # chars left of this index have resolved
+    for ((i = 0; i < n; i++)); do
+      ch=${plain:i:1}
+      if [ "$ch" = " " ]; then
+        line+=" "
+      elif [ "$i" -lt "$locked" ] && [ $((RANDOM % 5)) -ne 0 ]; then   # resolved chars still flicker a little
+        line+="$green$ch"
+      else
+        line+="$dim${noise:RANDOM % ${#noise}:1}"
+      fi
+    done
+    printf '\r%s%s' "$line" "$r"
+    sleep 0.022
+  done
+fi
+printf '\r\e[2K%s%s\n\e[?25h' "$final" "$r"

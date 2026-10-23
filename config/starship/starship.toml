@@ -1,0 +1,109 @@
+# Noir: near-black, mostly grey, matrix-green accent. Two lines, info left, clock right.
+"$schema" = 'https://starship.rs/config-schema.json'
+add_newline = true
+palette = 'noir'
+
+format = """
+[╭─](overlay)$username$hostname$directory$git_branch$git_state$git_status$nodejs$python$rust$golang$docker_context$cmd_duration$status$fill$time
+[╰─](overlay)$character"""
+
+[palettes.noir]
+overlay = '#2a332c'
+dim     = '#5f6e63'
+text    = '#c8d3ca'
+green   = '#3fb950'
+neon    = '#7ee787'
+cyan    = '#56d4dd'
+blue    = '#58a6ff'
+amber   = '#e3b341'
+red     = '#ff7b72'
+
+[fill]
+symbol = ' '
+
+[username]
+show_always = false
+format = '[$user](amber)[@](dim)'
+
+[hostname]
+ssh_only = true
+format = '[$hostname](amber) '
+
+[directory]
+format = '[ $path]($style)[$read_only]($read_only_style) '
+style = 'bold cyan'
+read_only = ' 󰌾'
+read_only_style = 'red'
+truncation_length = 3
+truncate_to_repo = true
+truncation_symbol = ''
+home_symbol = '~'
+
+[git_branch]
+format = '[on](dim) [ $branch]($style) '
+style = 'neon'
+
+[git_state]
+format = '[\($state( $progress_current/$progress_total)\)]($style) '
+style = 'amber'
+
+[git_status]
+format = '([$all_status$ahead_behind]($style) )'
+style = 'amber'
+conflicted = '=$count '
+ahead = '⇡$count '
+behind = '⇣$count '
+diverged = '⇕⇡$ahead_count⇣$behind_count '
+untracked = '?$count '
+stashed = '≡$count '
+modified = '!$count '
+staged = '+$count '
+renamed = '»$count '
+deleted = '✘$count '
+
+[nodejs]
+format = '[via](dim) [ $version]($style) '
+style = 'green'
+version_format = 'v${major}'
+
+[python]
+format = '[via](dim) [ $version( \($virtualenv\))]($style) '
+style = 'blue'
+version_format = '${major}.${minor}'
+
+[rust]
+format = '[via](dim) [ $version]($style) '
+style = 'red'
+version_format = '${major}.${minor}'
+
+[golang]
+format = '[via](dim) [ $version]($style) '
+style = 'cyan'
+version_format = '${major}.${minor}'
+
+[docker_context]
+format = '[ $context]($style) '
+style = 'blue'
+only_with_files = true
+
+[cmd_duration]
+min_time = 2000
+format = '[took](dim) [$duration]($style) '
+style = 'amber'
+show_milliseconds = false
+
+[status]
+disabled = false
+format = '[✗ $status]($style) '
+style = 'red'
+
+[time]
+disabled = false
+format = '[$time]($style)'
+style = 'dim'
+time_format = '%H:%M'
+
+[character]
+success_symbol = '[❯](bold neon)'
+error_symbol = '[❯](bold red)'
+vimcmd_symbol = '[❮](bold cyan)'
